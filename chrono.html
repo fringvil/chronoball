@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CHRONOBALL</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #020205;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 450px;
+            max-height: 800px;
+            overflow: hidden;
+            box-shadow: 0 0 35px rgba(255, 0, 85, 0.4);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            background-color: #05050d;
+            display: block;
+        }
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.8);
+        }
+        .time-indicator {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffcc;
+            font-size: 12px;
+            letter-spacing: 2px;
+            font-weight: bold;
+            pointer-events: none;
+            opacity: 0.8;
+            transition: color 0.2s;
+        }
+        .modal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(3, 3, 10, 0.94);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        .modal h1 { margin: 0 0 10px 0; font-size: 28px; color: #ff0055; text-shadow: 0 0 15px #ff0055; letter-spacing: 2px; }
+        .btn {
+            background: linear-gradient(135deg, #ff0055, #ff5500);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.5);
+            width: 80%;
+            max-width: 260px;
+        }
+        .btn-revive {
+            background: linear-gradient(135deg, #00ffcc, #0099ff);
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div class="hud">
+        <div>DEPTH: <span id="scoreText">0</span>m</div>
+        <div style="color: #ff0055;">ENERGY: <span id="energyText">100</span>%</div>
+    </div>
+    <div id="timeStatus" class="time-indicator">BULLET TIME ACTIVE</div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverModal" class="modal">
+        <h1 id="gameOverTitle">TIMELINE SHATTERED</h1>
+        <p>Depth Reached: <span id="finalScore">0</span>m</p>
+        <button class="btn btn-revive" onclick="watchAdRevive()">⚡ REWIND TIME (REVIVE)</button>
+        <button class="btn" onclick="restartGame()">NEW TIMELINE</button>
+    </div>
+
+    <canvas id="gameCanvas" width="360" height="640"></canvas>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const ball = {
+    x: canvas.width / 2,
+    y: canvas.height - 120,
+    prevX: canvas.width / 2,
+    prevY: canvas.height - 120,
+    radius: 10,
+    color: '#00ffcc',
+    energy: 100,
+    isSlash: false,
+    slashTimer: 0
+};
+
+let obstacles = [], bullets = [], particles = [], trail = [];
+let spawnTimer = 0;
+let baseSpeed = 4.5;
+let score = 0;
+let timeScale = 0.1; // Current global dilation factor (0.1 = 10% speed, 1.0 = normal)
+let isGameOver = false;
+let shakeTime = 0;
+
+// Input tracking
+let isTouching = false;
+let touchX = ball.x, touchY = ball.y;
+let lastMoveTime = 0;
+const keys = {};
+
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space') triggerSlash();
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (isGameOver) return;
+    isTouching = true;
+    updateTouchPos(e);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (isTouching) {
+        updateTouchPos(e);
+        lastMoveTime = Date.now();
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => isTouching = false);
+
+function updateTouchPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    touchX = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
+    touchY = (e.touches[0].clientY - rect.top) * (canvas.height / rect.height);
+}
+
+function triggerSlash() {
+    if (ball.energy >= 35 && !ball.isSlash) {
+        ball.isSlash = true;
+        ball.slashTimer = 18;
+        ball.energy -= 35;
+        shakeTime = 12;
+        createParticles(ball.x, ball.y, '#ff0055', 20);
+    }
+}
+
+function spawnPattern() {
+    const blockWidth = 45;
+    const blockHeight = 20;
+    const totalCols = Math.floor(canvas.width / blockWidth);
+    const gapIndex = Math.floor(Math.random() * (totalCols - 1));
+
+    // Spawn Obstacle Gate
+    for (let c = 0; c < totalCols; c++) {
+        if (c === gapIndex || c === gapIndex + 1) continue;
+
+        obstacles.push({
+            x: c * blockWidth + 2,
+            y: -blockHeight,
+            width: blockWidth - 4,
+            height: blockHeight,
+            color: '#ff0055'
+        });
+    }
+
+    // Spawn Kinetic Bullets aimed down
+    if (Math.random() < 0.6) {
+        bullets.push({
+            x: (gapIndex + 0.5) * blockWidth,
+            y: -blockHeight - 30,
+            radius: 5,
+            vy: 6
+        });
+    }
+}
+
+function createParticles(x, y, color, count = 8) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            size: Math.random() * 3 + 1,
+            color: color,
+            life: 25
+        });
+    }
+}
+
+function update() {
+    if (isGameOver) return;
+
+    ball.prevX = ball.x;
+    ball.prevY = ball.y;
+
+    // Movement & Time Dilation Logic
+    let isMoving = false;
+    if (isTouching) {
+        const dx = touchX - ball.x;
+        const dy = touchY - ball.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > 3) {
+            ball.x += dx * 0.2;
+            ball.y += dy * 0.2;
+            isMoving = true;
+        }
+    } else {
+        let vx = 0, vy = 0;
+        if (keys['ArrowLeft'] || keys['KeyA']) vx -= 6;
+        if (keys['ArrowRight'] || keys['KeyD']) vx += 6;
+        if (keys['ArrowUp'] || keys['KeyW']) vy -= 6;
+        if (keys['ArrowDown'] || keys['KeyS']) vy += 6;
+
+        if (vx !== 0 || vy !== 0) {
+            ball.x += vx;
+            ball.y += vy;
+            isMoving = true;
+        }
+    }
+
+    // Determine Time Dilation Factor
+    const targetTimeScale = isMoving ? 1.0 : 0.1;
+    timeScale += (targetTimeScale - timeScale) * 0.15;
+
+    const timeStatus = document.getElementById('timeStatus');
+    if (timeScale < 0.3) {
+        timeStatus.innerText = "BULLET TIME (10% SPEED)";
+        timeStatus.style.color = "#00ffcc";
+    } else {
+        timeStatus.innerText = "REAL-TIME SLICE";
+        timeStatus.style.color = "#ff0055";
+    }
+
+    // Boundary Constraints
+    ball.x = Math.max(ball.radius, Math.min(canvas.width - ball.radius, ball.x));
+    ball.y = Math.max(ball.radius, Math.min(canvas.height - ball.radius, ball.y));
+
+    // Motion Trail
+    if (isMoving) {
+        trail.push({ x: ball.x, y: ball.y, alpha: 0.8 });
+    }
+    trail.forEach((t, index) => {
+        t.alpha -= 0.05;
+        if (t.alpha <= 0) trail.splice(index, 1);
+    });
+
+    // Slash Ability State
+    if (ball.isSlash) {
+        ball.slashTimer--;
+        if (ball.slashTimer <= 0) ball.isSlash = false;
+    } else if (ball.energy < 100) {
+        ball.energy += 0.25 * timeScale;
+    }
+    document.getElementById('energyText').innerText = Math.floor(ball.energy);
+
+    // Spawning (Scales with Time Dilation)
+    spawnTimer += timeScale;
+    if (spawnTimer >= 90) {
+        spawnPattern();
+        spawnTimer = 0;
+    }
+
+    score += timeScale * 0.5;
+    document.getElementById('scoreText').innerText = Math.floor(score);
+
+    const scaledSpeed = baseSpeed * timeScale;
+
+    // Bullets Logic
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.y += (b.vy + baseSpeed) * timeScale;
+
+        // Collision Check
+        if (Math.hypot(ball.x - b.x, ball.y - b.y) < ball.radius + b.radius) {
+            if (ball.isSlash) {
+                createParticles(b.x, b.y, '#00ffcc', 10);
+                bullets.splice(i, 1);
+            } else {
+                triggerGameOver();
+                return;
+            }
+        }
+        if (b.y > canvas.height) bullets.splice(i, 1);
+    }
+
+    // Obstacle Bricks Logic
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.y += scaledSpeed;
+
+        const closestX = Math.max(obs.x, Math.min(ball.x, obs.x + obs.width));
+        const closestY = Math.max(obs.y, Math.min(ball.y, obs.y + obs.height));
+
+        if (Math.hypot(ball.x - closestX, ball.y - closestY) < ball.radius) {
+            if (ball.isSlash) {
+                // Slice Through Brick!
+                createParticles(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.color, 14);
+                shakeTime = 8;
+                obstacles.splice(i, 1);
+            } else {
+                triggerGameOver();
+                return;
+            }
+        }
+        if (obs.y > canvas.height) obstacles.splice(i, 1);
+    }
+
+    // Particles Update
+    particles.forEach((p, index) => {
+        p.x += p.vx * timeScale; p.y += p.vy * timeScale;
+        p.life -= timeScale;
+        if (p.life <= 0) particles.splice(index, 1);
+    });
+}
+
+function draw() {
+    ctx.save();
+
+    // Screen Shake
+    if (shakeTime > 0) {
+        ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+        shakeTime--;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Dynamic Time-Dilation Grid Lines
+    ctx.strokeStyle = timeScale < 0.3 ? 'rgba(0, 255, 204, 0.08)' : 'rgba(255, 0, 85, 0.15)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < canvas.width; i += 30) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+    }
+
+    // Motion Trail
+    trail.forEach(t => {
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, ball.radius * 0.8, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 255, 204, ${t.alpha * 0.4})`;
+        ctx.fill();
+    });
+
+    // Bullets
+    bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffbb00';
+        ctx.shadowBlur = 8; ctx.shadowColor = '#ffbb00';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+
+    // Obstacles
+    obstacles.forEach(obs => {
+        ctx.fillStyle = obs.color;
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+    });
+
+    // Particles
+    particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+
+    // Player Blade-Ball
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = ball.isSlash ? '#ff0055' : '#00ffcc';
+    ctx.shadowBlur = ball.isSlash ? 25 : 12;
+    ctx.shadowColor = ball.isSlash ? '#ff0055' : '#00ffcc';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Slice Wave visual
+    if (ball.isSlash) {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius * 2.2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    if (!isGameOver) requestAnimationFrame(gameLoop);
+}
+
+function triggerGameOver() {
+    isGameOver = true;
+    createParticles(ball.x, ball.y, '#ff0055', 30);
+    document.getElementById('finalScore').innerText = Math.floor(score);
+    document.getElementById('gameOverModal').style.display = 'flex';
+}
+
+function watchAdRevive() {
+    alert("Simulating Rewarded Ad Video... Rewinding 3 seconds of timeline! ⚡");
+    setTimeout(() => {
+        isGameOver = false;
+        ball.y = canvas.height - 120;
+        obstacles = []; bullets = [];
+        document.getElementById('gameOverModal').style.display = 'none';
+        gameLoop();
+    }, 1000);
+}
+
+function restartGame() {
+    ball.x = canvas.width / 2;
+    ball.y = canvas.height - 120;
+    ball.energy = 100;
+    obstacles = []; bullets = []; particles = []; trail = [];
+    spawnTimer = 0; score = 0;
+    isGameOver = false;
+    document.getElementById('gameOverModal').style.display = 'none';
+    gameLoop();
+}
+
+gameLoop();
+</script>
+</body>
+</html>
