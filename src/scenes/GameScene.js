@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { canTriggerSlash, getEnergyAfterSlash, resolveCollision } from '../gameplay/rules';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -153,10 +154,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   triggerSlash() {
-    if (this.energy >= 35 && !this.isSlash) {
+    if (canTriggerSlash(this.energy, this.isSlash)) {
       this.isSlash = true;
       this.slashTimer = 18;
-      this.energy -= 35;
+      this.energy = getEnergyAfterSlash(this.energy);
       this.player.setFillStyle(0xff0055);
       this.shakeTime = 12;
       this.createParticles(this.player.x, this.player.y, 0xff0055, 20);
@@ -196,8 +197,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   checkBulletCollision(bullet) {
-    if (Math.hypot(this.player.x - bullet.x, this.player.y - bullet.y) >= 15) return;
-    if (this.isSlash) {
+    const outcome = resolveCollision(Math.hypot(this.player.x - bullet.x, this.player.y - bullet.y), 15, this.isSlash);
+    if (outcome === 'none') return;
+    if (outcome === 'destroy') {
       this.createParticles(bullet.x, bullet.y, 0x00ffcc, 10);
       bullet.destroy();
     } else {
@@ -208,8 +210,9 @@ export class GameScene extends Phaser.Scene {
   checkObstacleCollision(obstacle) {
     const closestX = Phaser.Math.Clamp(this.player.x, obstacle.x - obstacle.width / 2, obstacle.x + obstacle.width / 2);
     const closestY = Phaser.Math.Clamp(this.player.y, obstacle.y - obstacle.height / 2, obstacle.y + obstacle.height / 2);
-    if (Math.hypot(this.player.x - closestX, this.player.y - closestY) >= 10) return;
-    if (this.isSlash) {
+    const outcome = resolveCollision(Math.hypot(this.player.x - closestX, this.player.y - closestY), 10, this.isSlash);
+    if (outcome === 'none') return;
+    if (outcome === 'destroy') {
       this.createParticles(obstacle.x, obstacle.y, 0xff0055, 14);
       this.shakeTime = 8;
       obstacle.destroy();
