@@ -47,12 +47,20 @@
 ## Priority 4: Add Monetization Carefully
 
 - [ ] Choose an ad provider and define the monetization model.
+- [ ] Define Chronoball Premium as a one-time entitlement that removes all ads and unlocks clearly listed content.
+- [ ] Choose Premium unlocks such as cosmetics, arenas, game modes, or other non-essential content without making the free game unfair.
+- [ ] Design the Premium purchase screen with localized pricing, benefits, restore-purchase access, and links to terms and privacy information.
+- [ ] Integrate Google Play Billing for a non-consumable Premium product and keep entitlement checks separate from UI state.
+- [ ] Restore and revalidate Premium purchases after reinstall, device changes, pending payments, cancellations, and refunds.
+- [ ] Suppress every ad format for Premium players, including rewarded revive ads, and test the entitlement boundary.
+- [ ] Add Premium purchase, restore, refund, and ad-suppression events to privacy-conscious analytics.
 - [ ] Complete age rating, child-safety, and regional consent requirements before serving ads.
 - [ ] Add a clearly optional rewarded ad for the existing revive flow.
 - [ ] Use test ads during development and keep production ad identifiers out of source control.
 - [ ] Add frequency caps and graceful fallbacks when an ad is unavailable or fails.
 - [ ] Track ad requests, impressions, completions, rewards, failures, and estimated revenue without collecting unnecessary personal data.
 - [ ] Monitor ad impact on retention, session length, performance, and crash rate in Grafana.
+- [ ] Test Premium and ad flows with Google Play license testers before release.
 - [ ] Add rate limits and server-side validation if ads, accounts, leaderboards, or a backend are introduced.
 
 ## Priority 5: Prepare and Operate the Release
