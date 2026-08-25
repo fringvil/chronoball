@@ -13,6 +13,7 @@ export class GameScene extends Phaser.Scene {
     this.isSlash = false;
     this.slashTimer = 0;
     this.isGameOver = false;
+    this.isStarted = false;
     this.shakeTime = 0;
     this.trail = [];
     this.particles = [];
@@ -28,14 +29,18 @@ export class GameScene extends Phaser.Scene {
     this.effects = this.add.graphics();
 
     // UI Texts
-    this.scoreText = this.add.text(20, 20, 'DEPTH: 0m', { font: '14px Courier', fill: '#00ffcc' });
-    this.energyText = this.add.text(220, 20, 'ENERGY: 100%', { font: '14px Courier', fill: '#ff0055' });
-    this.statusText = this.add.text(180, 50, 'BULLET TIME', { font: '12px Courier', fill: '#00ffcc' }).setOrigin(0.5);
+    this.hudPanel = this.add.rectangle(180, 43, 332, 58, 0x0b0f1e, 0.78)
+      .setStrokeStyle(1, 0x00ffcc, 0.2);
+    this.scoreText = this.add.text(20, 22, 'DEPTH  0m', { fontFamily: 'Trebuchet MS', fontSize: '14px', color: '#00ffcc', fontStyle: 'bold', shadow: { offsetX: 0, offsetY: 0, color: '#00ffcc', blur: 10, stroke: true, fill: true } });
+    this.energyText = this.add.text(340, 22, 'ENERGY  100%', { fontFamily: 'Trebuchet MS', fontSize: '14px', color: '#ff176f', fontStyle: 'bold', align: 'right', shadow: { offsetX: 0, offsetY: 0, color: '#ff176f', blur: 10, stroke: true, fill: true } }).setOrigin(1, 0);
+    this.statusText = this.add.text(180, 57, 'BULLET TIME', { fontFamily: 'Trebuchet MS', fontSize: '10px', color: '#00ffcc', fontStyle: 'bold', letterSpacing: 2, shadow: { offsetX: 0, offsetY: 0, color: '#00ffcc', blur: 8, stroke: true, fill: true } }).setOrigin(0.5);
 
     // Controls
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D');
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     // Input touch tracking
     this.pointer = this.input.activePointer;
@@ -44,12 +49,22 @@ export class GameScene extends Phaser.Scene {
     this.spawnTimer = 0;
 
     this.modal = document.getElementById('gameOverModal');
+    this.introModal = document.getElementById('introModal');
     this.finalScoreText = document.getElementById('finalScore');
+    document.getElementById('startButton')?.addEventListener('click', () => this.startGame());
     document.getElementById('reviveButton')?.addEventListener('click', () => this.watchAdRevive());
     document.getElementById('restartButton')?.addEventListener('click', () => this.restartGame());
   }
 
   update(time, delta) {
+    if (!this.isStarted) {
+      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) this.startGame();
+      return;
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
+      this.showMenu();
+      return;
+    }
     if (this.isGameOver) return;
 
     let isMoving = false;
@@ -237,10 +252,29 @@ export class GameScene extends Phaser.Scene {
     this.modal.style.display = 'flex';
   }
 
+  startGame() {
+    this.isStarted = true;
+    this.introModal.style.display = 'none';
+  }
+
+  showMenu() {
+    this.isStarted = false;
+    this.isGameOver = false;
+    this.modal.style.display = 'none';
+    this.introModal.style.display = 'flex';
+    this.obstacles.clear(true, true);
+    this.bullets.clear(true, true);
+    this.trail = [];
+    this.particles = [];
+    this.player.setPosition(180, 520);
+    this.player.setFillStyle(0x00ffcc);
+  }
+
   watchAdRevive() {
     window.alert('Simulating Rewarded Ad Video... Rewinding 3 seconds of timeline!');
     window.setTimeout(() => {
       this.isGameOver = false;
+      this.isStarted = true;
       this.player.setPosition(180, 520);
       this.obstacles.clear(true, true);
       this.bullets.clear(true, true);
@@ -261,6 +295,7 @@ export class GameScene extends Phaser.Scene {
     this.obstacles.clear(true, true);
     this.bullets.clear(true, true);
     this.isGameOver = false;
+    this.isStarted = true;
     this.modal.style.display = 'none';
   }
 }
