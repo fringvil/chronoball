@@ -1,36 +1,70 @@
 # Chronoball TODO
 
-## Immediate
+## Priority 0: Prove the Core Game
 
-- [ ] Playtest the core loop: movement, slash timing, collisions, revive, and restart.
+- [ ] Playtest movement, slash timing, collisions, revive, restart, and the overall run length.
+- [ ] Add browser-level tests for intro, start, game-over, revive, restart, and pause flows.
 - [ ] Verify keyboard and touch controls across desktop and mobile viewport sizes.
-- [ ] Add browser-level tests for the intro, start, game-over, revive, restart, and pause flows.
 - [ ] Handle app pause and resume when the browser loses focus, the phone locks, or a notification opens.
-- [ ] Support portrait orientation, safe areas, and reliable touch targets.
+- [ ] Support portrait orientation, safe areas, reliable touch targets, and protection from browser gestures.
+- [ ] Test first launch, returning players, offline mode, slow networks, interrupted loads, and storage failures.
 
-## Progression
+## Priority 1: Make It Reliable
 
-- [ ] Add difficulty scaling as the run continues.
-- [ ] Add more obstacle patterns.
 - [ ] Add high-score and settings persistence with `localStorage`.
+- [ ] Version and validate saved data so future releases can migrate or recover corrupted settings and scores.
+- [ ] Add loading, offline, error, and retry states for external assets and services.
+- [ ] Test on representative iOS Safari and Android Chrome devices, including lower-end hardware.
+- [ ] Set performance budgets for bundle size, load time, frame rate, memory, and battery usage.
+- [ ] Review accessibility, focus behavior, readable UI states, color contrast, reduced motion, and keyboard navigation.
+- [ ] Add CI checks for tests, production builds, dependency audits, and linting.
+- [ ] Add pull-request checks, preview deployments, build artifacts, and protected main-branch merges.
+- [ ] Choose and configure either Renovate or Dependabot for automated dependency updates.
+- [ ] Add a restrictive Content Security Policy and security headers.
+- [ ] Run secret scanning in CI and review third-party dependencies, browser storage, permissions, and external requests.
+
+## Priority 2: Improve the Player Experience
+
+- [ ] Add difficulty scaling and more obstacle patterns as the run continues.
+- [ ] Add sound effects, music, vibration, and stronger visual hit feedback.
+- [ ] Add settings for sound, music, vibration, and reduced motion.
 - [ ] Add optional power-ups, daily challenges, or missions.
 - [ ] Add unlockable colors, trails, or arenas.
-- [ ] Consider adding an optional leaderboard.
+- [ ] Consider adding an optional leaderboard with rate limits and server-side validation.
+- [ ] Plan localization for UI text, dates, numbers, consent screens, and store metadata.
 
-## Polish
+## Priority 3: Measure Before Monetizing
 
-- [ ] Add sound effects, music, and stronger visual hit feedback.
-- [ ] Add vibration feedback for slash, collision, and game over.
-- [ ] Add settings for sound, music, vibration, and reduced motion.
-- [ ] Review accessibility, focus behavior, readable UI states, and color contrast.
-- [ ] Prevent accidental browser scrolling and gesture interference.
-- [ ] Test frame rate and memory usage on a lower-end phone.
+- [ ] Prepare a privacy policy, terms of use, support contact, and data-deletion process before collecting analytics or serving ads.
+- [ ] Add privacy-conscious analytics with documented consent, data retention, and an opt-out path.
+- [ ] Define player metrics: unique players, daily/monthly active players, sessions per player, retention, and completion rate.
+- [ ] Track gameplay events such as game start, game over, revive, restart, score, and session duration.
+- [ ] Track operational metrics: crashes, load time, frame rate, and asset-loading failures.
+- [ ] Send application and deployment metrics to Grafana or Grafana Cloud.
+- [ ] Create Grafana dashboards and alerts for JavaScript errors, availability, load performance, and deployment failures.
+- [ ] Add release/version identifiers to telemetry so regressions can be traced to deployments.
 
-## Delivery
+## Priority 4: Add Monetization Carefully
+
+- [ ] Choose an ad provider and define the monetization model.
+- [ ] Complete age rating, child-safety, and regional consent requirements before serving ads.
+- [ ] Add a clearly optional rewarded ad for the existing revive flow.
+- [ ] Use test ads during development and keep production ad identifiers out of source control.
+- [ ] Add frequency caps and graceful fallbacks when an ad is unavailable or fails.
+- [ ] Track ad requests, impressions, completions, rewards, failures, and estimated revenue without collecting unnecessary personal data.
+- [ ] Monitor ad impact on retention, session length, performance, and crash rate in Grafana.
+- [ ] Add rate limits and server-side validation if ads, accounts, leaderboards, or a backend are introduced.
+
+## Priority 5: Prepare and Operate the Release
 
 - [ ] Profile the Phaser bundle and optimize loading if needed.
 - [ ] Add an app icon, splash screen, and installable PWA or native wrapper.
-- [ ] Add error monitoring and basic analytics only with an appropriate privacy policy.
 - [ ] Choose a production host such as GitHub Pages, Netlify, or Vercel.
-- [ ] Add CI checks for `npm test` and `npm run build`.
+- [ ] Automate production deployment after approved changes, with environment-specific configuration and rollback steps.
+- [ ] Document release, rollback, and incident-response procedures.
+- [ ] Prepare store metadata, screenshots, feature graphics, icons, and review notes.
+- [ ] Add an in-game way for players to report problems or provide feedback.
+- [ ] Run a staged release or beta test, monitor the dashboards, and define a rollback threshold.
+- [ ] Verify that analytics, ads, consent, and data deletion work correctly in every supported region.
+- [ ] Complete platform content ratings and regional compliance requirements.
 - [ ] Deploy a production build.
