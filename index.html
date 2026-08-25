@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>CHRONOBALL</title>
   <style>
+    * { box-sizing: border-box; user-select: none; touch-action: none; }
     body {
       margin: 0;
       padding: 0;
@@ -14,11 +15,24 @@
       align-items: center;
       height: 100vh;
       overflow: hidden;
+      font-family: 'Courier New', Courier, monospace;
     }
+    #game { position: relative; width: 100vw; height: 100vh; max-width: 450px; max-height: 800px; overflow: hidden; border: 1px solid rgba(255, 0, 85, 0.3); box-shadow: 0 0 35px rgba(255, 0, 85, 0.4); }
+    #gameOverModal { display: none; position: absolute; inset: 0; z-index: 10; flex-direction: column; justify-content: center; align-items: center; padding: 20px; color: #fff; background: rgba(3, 3, 10, 0.94); text-align: center; }
+    #gameOverModal h1 { margin: 0 0 10px; color: #ff0055; font-size: 28px; letter-spacing: 2px; text-shadow: 0 0 15px #ff0055; }
+    .game-button { width: 80%; max-width: 260px; margin: 10px; padding: 14px 28px; border: 0; border-radius: 4px; color: #fff; background: linear-gradient(135deg, #ff0055, #ff5500); font: bold 15px 'Courier New', monospace; letter-spacing: 1px; }
+    #reviveButton { color: #000; background: linear-gradient(135deg, #00ffcc, #0099ff); }
   </style>
 </head>
 <body>
-  <div id="game"></div>
+  <div id="game">
+    <div id="gameOverModal">
+      <h1>TIMELINE SHATTERED</h1>
+      <p>Depth Reached: <span id="finalScore">0</span>m</p>
+      <button id="reviveButton" class="game-button">REWIND TIME (REVIVE)</button>
+      <button id="restartButton" class="game-button">NEW TIMELINE</button>
+    </div>
+  </div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
