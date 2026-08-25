@@ -58,11 +58,17 @@
 ## Priority 5: Prepare and Operate the Release
 
 - [ ] Profile the Phaser bundle and optimize loading if needed.
-- [ ] Add an app icon, splash screen, and installable PWA or native wrapper.
+- [ ] Choose between an installable PWA and an Android wrapper such as Capacitor.
+- [ ] If targeting Google Play, create the Android project, configure the package ID, app icon, splash screen, permissions, and signing key.
 - [ ] Choose a production host such as GitHub Pages, Netlify, or Vercel.
 - [ ] Automate production deployment after approved changes, with environment-specific configuration and rollback steps.
 - [ ] Document release, rollback, and incident-response procedures.
 - [ ] Prepare store metadata, screenshots, feature graphics, icons, and review notes.
+- [ ] Create and verify a Google Play Console developer account.
+- [ ] Complete Google Play listing, Data safety, content rating, target API, privacy policy, and advertising declarations.
+- [ ] Build and sign a production Android App Bundle (`.aab`) and keep signing credentials out of source control.
+- [ ] Release to internal and closed testing tracks, validate on real Android devices, and fix review issues.
+- [ ] Submit the first production release for Google Play review, then use a staged rollout.
 - [ ] Add an in-game way for players to report problems or provide feedback.
 - [ ] Run a staged release or beta test, monitor the dashboards, and define a rollback threshold.
 - [ ] Verify that analytics, ads, consent, and data deletion work correctly in every supported region.
