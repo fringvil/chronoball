@@ -1,6 +1,7 @@
 # Chronoball TODO
 ## Check
-- [ ] Implement arcade physics https://docs.phaser.io/phaser/concepts/physics/arcade
+- [ ] Implement different scenes according to common practises. Loading Screen, a Main Menu, a Game Level, an in-game Item Shop, a High Score Table (https://docs.phaser.io/phaser/concepts/scenes)
+- [ ] Implement arcade physics (https://docs.phaser.io/phaser/concepts/physics/arcade) 
 
 ## Priority 0: Prove the Core Game
 
