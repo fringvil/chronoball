@@ -1,4 +1,4 @@
-CHRONOBALL is a time-dilution adventure. 
+CHRONOBALL (working name) is a time-dilution adventure.
 
 You play as the meteorite *insert name* going on a mission against the clock, or is it towards the clock?
 
