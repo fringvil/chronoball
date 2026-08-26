@@ -1,7 +1,8 @@
 # Chronoball TODO
 ## Check
 - [ ] Implement different scenes according to common practises. Loading Screen, a Main Menu, a Game Level, an in-game Item Shop, a High Score Table (https://docs.phaser.io/phaser/concepts/scenes)
-- [ ] Implement arcade physics (https://docs.phaser.io/phaser/concepts/physics/arcade) 
+- [ ] Implement arcade physics (https://docs.phaser.io/phaser/concepts/physics/arcade)
+- [ ] Check time. Its a bit slower on the phone now than on pc. Check delta time. (https://docs.phaser.io/phaser/concepts/time)
 
 ## Priority 0: Prove the Core Game
 
