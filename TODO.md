@@ -1,4 +1,6 @@
 # Chronoball TODO
+## Check
+- [] Implement arcade physics https://docs.phaser.io/phaser/concepts/physics/arcade
 
 ## Priority 0: Prove the Core Game
 
