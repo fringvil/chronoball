@@ -1,11 +1,11 @@
 CHRONOBALL (working name) is a time-dilution adventure.
 
-You play as the meteorite *insert name* going on a mission against the clock, or is it towards the clock?
+You play as a sentient meteorite that can control time.
 
-The meteorite has special powers. Use them for good, or bad.
+You gain special powers sometimes.
 
-Words from the developer:
-I wanted to make an arcade blockbreaker, dxball + alien invaders kind of game with a time twist.
-This is what you got.
+You meet weird enemies on the way.
 
-I will release this on Google Play Store when it's done.
+Enjoy!
+
+
