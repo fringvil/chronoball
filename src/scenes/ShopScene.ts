@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { loadGameData, saveGameData } from '../gameplay/persistence';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -8,7 +9,16 @@ export class ShopScene extends Phaser.Scene {
   create(): void {
     window.__chronoballScene = 'ShopScene';
     const { width, height } = this.scale;
-    const currency = this.registry.get('currency') ?? 120;
+    const persisted = loadGameData();
+    const currency = persisted.currency || Number(this.registry.get('currency') ?? 120);
+    this.registry.set('currency', currency);
+    this.registry.set('highScores', persisted.highScores);
+    this.registry.set('lastScore', persisted.lastScore || 0);
+    Object.entries(persisted.items).forEach(([key, value]) => {
+      if (value) {
+        this.registry.set(key, true);
+      }
+    });
 
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x050b13, 0x050b13, 0x0c1724, 0x0a111a, 1);
@@ -141,6 +151,7 @@ export class ShopScene extends Phaser.Scene {
 
         this.registry.set('currency', currentCurrency - item.cost);
         this.registry.set(`item:${item.name}`, true);
+        saveGameData(this.registry);
         this.scene.restart();
       };
 

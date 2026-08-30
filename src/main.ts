@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene';
 import { LoadingScene } from './scenes/LoadingScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
+import { InstructionsScene } from './scenes/InstructionsScene';
 import { ShopScene } from './scenes/ShopScene';
 import { HighScoreScene } from './scenes/HighScoreScene';
 
@@ -29,7 +30,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false
     }
   },
-  scene: [LoadingScene, MainMenuScene, GameScene, ShopScene, HighScoreScene]
+  scene: [LoadingScene, MainMenuScene, InstructionsScene, GameScene, ShopScene, HighScoreScene]
 };
 
 const game = new Phaser.Game(config);

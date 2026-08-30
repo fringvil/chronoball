@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { addHighScore, saveHighScores } from '../gameplay/highScores';
+import { saveGameData } from '../gameplay/persistence';
 import { getArcadeVelocity, getDeltaFactor } from '../gameplay/physics';
 import { canTriggerLaser, canTriggerSlash, getEnergyAfterLaser, getEnergyAfterSlash, resolveCollision, SLASH_BULLET_RADIUS, SLASH_HITBOX_RADIUS } from '../gameplay/rules';
 
@@ -671,6 +672,7 @@ export class GameScene extends Phaser.Scene {
     if (!obstacle || !obstacle.active || obstacle.getData('steel') === true) return;
     const currentCurrency = this.registry.get('currency') ?? 0;
     this.registry.set('currency', currentCurrency + 5);
+    saveGameData(this.registry);
     this.createParticles(obstacle.x, obstacle.y, 0xff6b00, 18);
     this.createParticles(obstacle.x, obstacle.y, 0xff0055, 14);
     this.showRewardText(obstacle.x, obstacle.y - 12, '+5', 0xffd84d, 15);
@@ -789,6 +791,7 @@ export class GameScene extends Phaser.Scene {
     this.registry.set('highScores', updatedScores);
     this.registry.set('lastScore', finalScore);
     saveHighScores(updatedScores);
+    saveGameData(this.registry);
 
     this.time.delayedCall(1100, () => {
       this.scene.start('HighScoreScene', { score: finalScore });

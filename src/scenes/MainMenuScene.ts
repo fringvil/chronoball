@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { loadGameData } from '../gameplay/persistence';
 import { loadHighScores } from '../gameplay/highScores';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -9,11 +10,17 @@ export class MainMenuScene extends Phaser.Scene {
   create(): void {
     window.__chronoballScene = 'MainMenuScene';
     const { width, height } = this.scale;
-    const highScore = loadHighScores()[0] ?? 0;
+    const persisted = loadGameData();
+    const highScore = persisted.highScores[0] ?? 0;
 
-    this.registry.set('highScores', loadHighScores());
-    this.registry.set('lastScore', this.registry.get('lastScore') ?? 0);
-    this.registry.set('currency', this.registry.get('currency') ?? 120);
+    this.registry.set('highScores', persisted.highScores.length ? persisted.highScores : loadHighScores());
+    this.registry.set('lastScore', persisted.lastScore ?? 0);
+    this.registry.set('currency', persisted.currency || 120);
+    Object.entries(persisted.items).forEach(([key, value]) => {
+      if (value) {
+        this.registry.set(key, true);
+      }
+    });
 
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x050b13, 0x050b13, 0x0c1724, 0x0a111a, 1);
@@ -98,10 +105,13 @@ export class MainMenuScene extends Phaser.Scene {
     this.createMenuButton(width / 2, firstButtonY, 'START RUN', () => {
       this.scene.start('GameScene');
     });
-    this.createMenuButton(width / 2, firstButtonY + 72, 'ITEM SHOP', () => {
+    this.createMenuButton(width / 2, firstButtonY + 72, 'CONTROLS', () => {
+      this.scene.start('InstructionsScene');
+    });
+    this.createMenuButton(width / 2, firstButtonY + 144, 'ITEM SHOP', () => {
       this.scene.start('ShopScene');
     });
-    this.createMenuButton(width / 2, firstButtonY + 144, 'HIGH SCORES', () => {
+    this.createMenuButton(width / 2, firstButtonY + 216, 'HIGH SCORES', () => {
       this.scene.start('HighScoreScene');
     });
 
