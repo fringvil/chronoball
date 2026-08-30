@@ -25,6 +25,7 @@ type CollisionBody = Phaser.GameObjects.Rectangle & {
   x: number;
   y: number;
   destroy: () => void;
+  getData: (key: string) => unknown;
 };
 
 export class GameScene extends Phaser.Scene {
@@ -106,7 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.bullets = this.physics.add.group({ allowGravity: false, immovable: true });
     this.laserShots = this.physics.add.group({ allowGravity: false });
     this.starPowerups = this.physics.add.group({ allowGravity: false, immovable: true });
-    this.physics.add.overlap(this.player, this.obstacles, (_player, obstacle) => {
+    this.physics.add.collider(this.player, this.obstacles, (_player, obstacle) => {
       this.handleArcadeCollision(obstacle as Phaser.GameObjects.Rectangle);
     });
     this.physics.add.overlap(this.player, this.bullets, (_player, bullet) => {
@@ -116,8 +117,23 @@ export class GameScene extends Phaser.Scene {
       this.triggerPowerup(powerup as Phaser.GameObjects.Container);
     });
     this.physics.add.overlap(this.laserShots, this.obstacles, (_laser, obstacle) => {
-      this.destroyObstacleWithExplosion(obstacle as CollisionBody);
-      (_laser as Phaser.GameObjects.Arc).destroy();
+      const brick = obstacle as CollisionBody;
+      const laser = _laser as Phaser.GameObjects.GameObject & { x: number; y: number; active: boolean; destroy: () => void };
+      if (brick.getData('steel') === true) {
+        this.createParticles(laser.x, laser.y, 0xdfe7ff, 12);
+        const spark = this.add.circle(laser.x, laser.y, 8, 0xfff0f0, 0.9).setDepth(31);
+        this.add.tween({
+          targets: spark,
+          alpha: 0,
+          scale: 2.6,
+          duration: 120,
+          onComplete: () => spark.destroy()
+        });
+        laser.destroy();
+        return;
+      }
+      this.destroyObstacleWithExplosion(brick);
+      laser.destroy();
     });
     this.physics.add.overlap(this.laserShots, this.bullets, (_laser, bullet) => {
       this.destroyBulletWithExplosion(bullet as Phaser.GameObjects.Arc);
@@ -223,6 +239,10 @@ export class GameScene extends Phaser.Scene {
 
     this.player.x = Phaser.Math.Clamp(this.player.x, 10, 350);
     this.player.y = Phaser.Math.Clamp(this.player.y, 10, 630);
+    if (this.player.y >= 628) {
+      this.triggerGameOver();
+      return;
+    }
     if (isMoving) this.trail.push({ x: this.player.x, y: this.player.y, alpha: 0.8 });
     this.trail.forEach((trail: TrailPoint) => { trail.alpha -= 0.05 * deltaFactor; });
     this.trail = this.trail.filter((trail: TrailPoint) => trail.alpha > 0);
@@ -303,6 +323,7 @@ export class GameScene extends Phaser.Scene {
       this.obstacles.getChildren().forEach((obs: Phaser.GameObjects.GameObject) => {
         const obstacle = obs as CollisionBody;
         if (!obstacle || !obstacle.active) return;
+        if (obstacle.getData('steel') === true) return;
         const closestX = Phaser.Math.Clamp(this.player.x, obstacle.x - obstacle.width / 2, obstacle.x + obstacle.width / 2);
         const closestY = Phaser.Math.Clamp(this.player.y, obstacle.y - obstacle.height / 2, obstacle.y + obstacle.height / 2);
         const outcome = resolveCollision(Math.hypot(this.player.x - closestX, this.player.y - closestY), SLASH_HITBOX_RADIUS, true);
@@ -389,8 +410,13 @@ export class GameScene extends Phaser.Scene {
 
   private handleArcadeCollision(obstacle: Phaser.GameObjects.Rectangle): void {
     if (!obstacle || this.isGameOver) return;
+    const brick = obstacle as CollisionBody;
+    if (brick.getData('steel') === true) {
+      this.player.body.setVelocity(0, 0);
+      return;
+    }
     if (this.invincibilityTimer > 0) {
-      this.destroyObstacleWithExplosion(obstacle);
+      this.destroyObstacleWithExplosion(brick);
       return;
     }
     const closestX = Phaser.Math.Clamp(this.player.x, obstacle.x - obstacle.width / 2, obstacle.x + obstacle.width / 2);
@@ -455,12 +481,36 @@ export class GameScene extends Phaser.Scene {
 
     for (let c = 0; c < totalCols; c++) {
       if (c === gapIndex || c === gapIndex + allowedGapWidth) continue;
-      const rect = this.add.rectangle(c * blockWidth + 2 + (blockWidth - 4) / 2, -10, blockWidth - 4, 20, 0xff0055);
-      this.physics.add.existing(rect);
-      const rectBody = rect.body as Phaser.Physics.Arcade.Body;
+      const isSteel = Math.random() < 0.18;
+      let brick: Phaser.GameObjects.GameObject;
+
+      if (isSteel) {
+        const x = c * blockWidth + 2 + (blockWidth - 4) / 2;
+        const y = -10;
+        const base = this.add.rectangle(x, y, blockWidth - 4, 26, 0x7d8da9)
+          .setStrokeStyle(2, 0xeaf1ff, 1);
+        this.add.rectangle(x, y - 7, blockWidth - 12, 3, 0xb6c2d5, 0.8);
+        this.add.rectangle(x, y + 4, blockWidth - 12, 3, 0x94a6ba, 0.7);
+        this.add.rectangle(x, y + 12, blockWidth - 12, 2, 0xeaf1ff, 0.7);
+        brick = base;
+        brick.setData('steel', true);
+      } else {
+        brick = this.add.rectangle(
+          c * blockWidth + 2 + (blockWidth - 4) / 2,
+          -10,
+          blockWidth - 4,
+          20,
+          0xff0055
+        )
+          .setStrokeStyle(1, 0xff8fa8, 1);
+        brick.setData('steel', false);
+      }
+
+      this.physics.add.existing(brick);
+      const rectBody = brick.body as Phaser.Physics.Arcade.Body;
       rectBody.setAllowGravity(false);
       rectBody.setImmovable(true);
-      this.obstacles.add(rect);
+      this.obstacles.add(brick);
     }
 
     if (Math.random() < 0.6) {
@@ -529,9 +579,16 @@ export class GameScene extends Phaser.Scene {
     const magnitude = Math.hypot(directionX, directionY) || 1;
     const normalizedX = directionX / magnitude;
     const normalizedY = directionY / magnitude;
-    const shot = this.add.circle(this.player.x, this.player.y, 10, 0x7ae6ff, 1)
-      .setStrokeStyle(2, 0xbfeeff, 1)
-      .setDepth(30);
+    const shot = this.add.rectangle(
+      this.player.x + normalizedX * 14,
+      this.player.y + normalizedY * 14,
+      34,
+      5,
+      0xff3b3b,
+      1
+    )
+      .setDepth(30)
+      .setRotation(Math.atan2(normalizedY, normalizedX));
     shot.setData('ttl', 1200);
     const speed = 700;
     shot.setData('vx', normalizedX * speed);
@@ -540,14 +597,15 @@ export class GameScene extends Phaser.Scene {
     const shotBody = shot.body as Phaser.Physics.Arcade.Body;
     shotBody.setAllowGravity(false);
     shotBody.setImmovable(true);
+    shotBody.setSize(34, 5);
     this.laserShots.add(shot);
 
-    const flash = this.add.circle(this.player.x, this.player.y, 16, 0xbfeeff, 0.9).setDepth(29);
+    const flash = this.add.circle(this.player.x, this.player.y, 10, 0xff7a7a, 0.8).setDepth(29);
     this.add.tween({
       targets: flash,
       alpha: 0,
-      scale: 2.5,
-      duration: 90,
+      scale: 2.2,
+      duration: 80,
       onComplete: () => flash.destroy()
     });
 
@@ -558,7 +616,7 @@ export class GameScene extends Phaser.Scene {
     const radius = 46;
     const targets = this.obstacles.getChildren().filter((obs: Phaser.GameObjects.GameObject) => {
       const obstacle = obs as CollisionBody;
-      if (!obstacle || !obstacle.active) return false;
+      if (!obstacle || !obstacle.active || obstacle.getData('steel') === true) return false;
       return Phaser.Math.Distance.Between(this.player.x, this.player.y, obstacle.x, obstacle.y) < radius + obstacle.width * 0.75;
     }) as CollisionBody[];
 
@@ -566,7 +624,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private destroyObstacleWithExplosion(obstacle: CollisionBody): void {
-    if (!obstacle || !obstacle.active) return;
+    if (!obstacle || !obstacle.active || obstacle.getData('steel') === true) return;
     const currentCurrency = this.registry.get('currency') ?? 0;
     this.registry.set('currency', currentCurrency + 5);
     this.createParticles(obstacle.x, obstacle.y, 0xff6b00, 18);
@@ -621,7 +679,19 @@ export class GameScene extends Phaser.Scene {
 
   private drawEffects(): void {
     this.effects.clear();
-    this.effects.lineStyle(1, this.timeScale < 0.3 ? 0x00ffcc : 0xff0055, this.timeScale < 0.3 ? 0.08 : 0.15);
+    this.effects.beginPath();
+    this.effects.lineStyle(6, 0xff2a2a, 1);
+    const dangerY = 630;
+    for (let x = 0; x <= this.scale.width; x += 18) {
+      const y = dangerY + ((x / 18) % 2 === 0 ? 12 : -12);
+      if (x === 0) {
+        this.effects.moveTo(x, y);
+      } else {
+        this.effects.lineTo(x, y);
+      }
+    }
+    this.effects.strokePath();
+    this.effects.lineStyle(1, this.timeScale < 0.3 ? 0x00ffcc : 0xff0055, this.timeScale < 0.08 ? 0.08 : 0.15);
     for (let x = 0; x < this.scale.width; x += 30) {
       this.effects.lineBetween(x, 0, x, this.scale.height);
     }
