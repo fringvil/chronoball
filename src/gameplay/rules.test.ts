@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { canTriggerSlash, getEnergyAfterSlash, resolveCollision, SLASH_BULLET_RADIUS, SLASH_COST, SLASH_HITBOX_RADIUS } from './rules';
+import {
+  canTriggerLaser,
+  canTriggerSlash,
+  getEnergyAfterLaser,
+  getEnergyAfterSlash,
+  LASER_COST,
+  resolveCollision,
+  SLASH_BULLET_RADIUS,
+  SLASH_COST,
+  SLASH_HITBOX_RADIUS
+} from './rules';
 
 describe('slash rules', () => {
   it('allows a slash with exactly enough energy', () => {
@@ -13,6 +23,20 @@ describe('slash rules', () => {
 
   it('subtracts the fixed slash cost', () => {
     expect(getEnergyAfterSlash(80)).toBe(45);
+  });
+});
+
+describe('laser rules', () => {
+  it('allows a laser shot with exactly enough energy', () => {
+    expect(canTriggerLaser(LASER_COST)).toBe(true);
+  });
+
+  it('does not allow a laser shot below the energy cost', () => {
+    expect(canTriggerLaser(LASER_COST - 1)).toBe(false);
+  });
+
+  it('subtracts the fixed laser cost', () => {
+    expect(getEnergyAfterLaser(80)).toBe(65);
   });
 });
 

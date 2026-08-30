@@ -101,31 +101,31 @@ export class ShopScene extends Phaser.Scene {
         fontSize: '11px',
         color: '#b9c8de'
       }).setOrigin(0, 0.5).setDepth(5);
-      const costText = this.add.text(95, 0, `${item.cost} CR`, {
-        fontFamily: 'Trebuchet MS, sans-serif',
-        fontSize: '13px',
-        color: '#ffb14c',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(5);
 
       const buyButton = this.add.container(118, 0);
       buyButton.setDepth(20);
       const buyBgGraphics = this.add.graphics();
       buyBgGraphics.fillStyle(0x0f172a, 0.95);
-      buyBgGraphics.fillRoundedRect(-40, -15, 80, 30, 15);
+      buyBgGraphics.fillRoundedRect(-42, -18, 84, 36, 16);
       buyBgGraphics.lineStyle(1.4, item.color, 1);
-      buyBgGraphics.strokeRoundedRect(-40, -15, 80, 30, 15);
-      const buyBg = this.add.zone(0, 0, 80, 30).setInteractive({ useHandCursor: true });
+      buyBgGraphics.strokeRoundedRect(-42, -18, 84, 36, 16);
+      const buyBg = this.add.zone(0, 0, 84, 36).setInteractive({ useHandCursor: true });
       buyBg.setDepth(21);
-      const buyText = this.add.text(0, 0, 'BUY', {
+      const priceText = this.add.text(0, -7, `${item.cost} CR`, {
+        fontFamily: 'Trebuchet MS, sans-serif',
+        fontSize: '10px',
+        color: '#ffb14c',
+        fontStyle: 'bold',
+        letterSpacing: 0.8
+      }).setOrigin(0.5).setDepth(22);
+      const buyText = this.add.text(0, 9, 'BUY', {
         fontFamily: 'Trebuchet MS, sans-serif',
         fontSize: '12px',
         color: '#ffffff',
         fontStyle: 'bold',
         letterSpacing: 1
-      }).setOrigin(0.5);
-      buyText.setDepth(22);
-      buyButton.add([buyBgGraphics, buyBg, buyText]);
+      }).setOrigin(0.5).setDepth(22);
+      buyButton.add([buyBgGraphics, buyBg, priceText, buyText]);
 
       const purchaseItem = () => {
         const currentCurrency = this.registry.get('currency') ?? 0;
@@ -152,7 +152,7 @@ export class ShopScene extends Phaser.Scene {
         this.tweens.add({ targets: buyButton, scale: 1, duration: 120, ease: 'Cubic.easeOut' });
       });
 
-      itemPanel.add([nameText, effectText, costText, buyButton]);
+      itemPanel.add([nameText, effectText, buyButton]);
       itemPanel.setSize(300, 68);
     });
 

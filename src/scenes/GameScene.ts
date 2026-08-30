@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { addHighScore, saveHighScores } from '../gameplay/highScores';
 import { getArcadeVelocity, getDeltaFactor } from '../gameplay/physics';
-import { canTriggerSlash, getEnergyAfterSlash, resolveCollision, SLASH_BULLET_RADIUS, SLASH_HITBOX_RADIUS } from '../gameplay/rules';
+import { canTriggerLaser, canTriggerSlash, getEnergyAfterLaser, getEnergyAfterSlash, resolveCollision, SLASH_BULLET_RADIUS, SLASH_HITBOX_RADIUS } from '../gameplay/rules';
 
 type TrailPoint = {
   x: number;
@@ -573,7 +573,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private fireLaserShot(): void {
-    if (!this.hasLaserBlaster || this.isGameOver || this.laserTimer > 0) return;
+    if (!this.hasLaserBlaster || this.isGameOver || this.laserTimer > 0 || !canTriggerLaser(this.energy)) return;
+
+    this.energy = getEnergyAfterLaser(this.energy);
 
     const velocityX = this.player.body.velocity.x ?? 0;
     const velocityY = this.player.body.velocity.y ?? 0;
