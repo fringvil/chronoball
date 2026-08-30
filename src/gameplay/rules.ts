@@ -1,6 +1,6 @@
 export const SLASH_COST = 35 as const;
-export const SLASH_HITBOX_RADIUS = 26 as const;
-export const SLASH_BULLET_RADIUS = 22 as const;
+export const SLASH_HITBOX_RADIUS = 30 as const;
+export const SLASH_BULLET_RADIUS = 30 as const;
 
 export function canTriggerSlash(energy: number, isSlash: boolean): boolean {
   return energy >= SLASH_COST && !isSlash;
@@ -11,6 +11,6 @@ export function getEnergyAfterSlash(energy: number): number {
 }
 
 export function resolveCollision(distance: number, threshold: number, isSlash: boolean): 'none' | 'destroy' | 'game-over' {
-  if (distance >= threshold) return 'none';
+  if (distance > threshold) return 'none';
   return isSlash ? 'destroy' : 'game-over';
 }

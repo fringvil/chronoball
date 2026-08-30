@@ -38,22 +38,32 @@ export class GameScene extends Phaser.Scene {
   private isStarted = true;
   private shakeTime = 0;
   private impactPulse = 0;
+  private invincibilityTimer = 0;
+  private laserTimer = 0;
+  private powerupSpawnTimer = 0;
   private trail: TrailPoint[] = [];
   private particles: ParticleEffect[] = [];
   private player!: Phaser.GameObjects.Arc & { body: Phaser.Physics.Arcade.Body; x: number; y: number };
   private obstacles!: Phaser.Physics.Arcade.Group;
   private bullets!: Phaser.Physics.Arcade.Group;
+  private laserShots!: Phaser.Physics.Arcade.Group;
+  private starPowerups!: Phaser.Physics.Arcade.Group;
+  private hasLaserBlaster = false;
   private effects!: Phaser.GameObjects.Graphics;
   private hudPanel!: Phaser.GameObjects.Rectangle;
   private scoreText!: Phaser.GameObjects.Text;
   private energyText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
+  private powerText!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private spaceKey!: Phaser.Input.Keyboard.Key;
   private escapeKey!: Phaser.Input.Keyboard.Key;
+  private jKey!: Phaser.Input.Keyboard.Key;
   private pointer!: Phaser.Input.Pointer;
   private spawnTimer = 0;
+  private lastMoveX = 0;
+  private lastMoveY = -1;
 
   constructor() {
     super('GameScene');
@@ -76,8 +86,12 @@ export class GameScene extends Phaser.Scene {
     this.isStarted = true;
     this.shakeTime = 0;
     this.impactPulse = 0;
+    this.invincibilityTimer = 0;
+    this.laserTimer = 0;
+    this.powerupSpawnTimer = 12 + Math.random() * 10;
     this.trail = [];
     this.particles = [];
+    this.hasLaserBlaster = this.registry.get('item:Laser Blaster') === true;
 
     this.player = this.add.circle(180, 520, 10, 0x00ffcc) as Phaser.GameObjects.Arc & { body: Phaser.Physics.Arcade.Body; x: number; y: number };
     this.physics.add.existing(this.player);
@@ -90,16 +104,30 @@ export class GameScene extends Phaser.Scene {
 
     this.obstacles = this.physics.add.group({ allowGravity: false, immovable: true });
     this.bullets = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.laserShots = this.physics.add.group({ allowGravity: false });
+    this.starPowerups = this.physics.add.group({ allowGravity: false, immovable: true });
     this.physics.add.overlap(this.player, this.obstacles, (_player, obstacle) => {
       this.handleArcadeCollision(obstacle as Phaser.GameObjects.Rectangle);
     });
     this.physics.add.overlap(this.player, this.bullets, (_player, bullet) => {
       this.handleArcadeBulletCollision(bullet as Phaser.GameObjects.Arc);
     });
+    this.physics.add.overlap(this.player, this.starPowerups, (_player, powerup) => {
+      this.triggerPowerup(powerup as Phaser.GameObjects.Container);
+    });
+    this.physics.add.overlap(this.laserShots, this.obstacles, (_laser, obstacle) => {
+      this.destroyObstacleWithExplosion(obstacle as CollisionBody);
+      (_laser as Phaser.GameObjects.Arc).destroy();
+    });
+    this.physics.add.overlap(this.laserShots, this.bullets, (_laser, bullet) => {
+      this.destroyBulletWithExplosion(bullet as Phaser.GameObjects.Arc);
+      (_laser as Phaser.GameObjects.Arc).destroy();
+    });
     this.effects = this.add.graphics();
 
-    this.hudPanel = this.add.rectangle(180, 43, 332, 58, 0x0b0f1e, 0.78)
-      .setStrokeStyle(1, 0x00ffcc, 0.2);
+    this.hudPanel = this.add.rectangle(180, 43, 332, 58, 0x0b0f1e, 0)
+      .setStrokeStyle(0, 0x00ffcc, 0);
+    this.hudPanel.setVisible(false);
     this.scoreText = this.add.text(20, 22, 'DEPTH  0m', {
       fontFamily: 'Trebuchet MS',
       fontSize: '14px',
@@ -123,11 +151,20 @@ export class GameScene extends Phaser.Scene {
       letterSpacing: 2,
       shadow: { offsetX: 0, offsetY: 0, color: '#00ffcc', blur: 8, stroke: true, fill: true }
     }).setOrigin(0.5);
+    this.powerText = this.add.text(180, 72, 'POWER: --', {
+      fontFamily: 'Trebuchet MS',
+      fontSize: '12px',
+      color: '#ffd84d',
+      fontStyle: 'bold',
+      letterSpacing: 2,
+      shadow: { offsetX: 0, offsetY: 0, color: '#ffd84d', blur: 8, stroke: true, fill: true }
+    }).setOrigin(0.5).setAlpha(0.7);
 
     this.cursors = keyboard.createCursorKeys();
     this.keys = keyboard.addKeys('W,A,S,D') as Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
     this.spaceKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.escapeKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.jKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
     this.pointer = this.input.activePointer;
     this.spawnTimer = 0;
   }
@@ -161,6 +198,8 @@ export class GameScene extends Phaser.Scene {
       if (Math.hypot(dx, dy) > 3) {
         const pointerVelocity = getArcadeVelocity(dx, dy, 240);
         this.player.body.setVelocity(pointerVelocity.x, pointerVelocity.y);
+        this.lastMoveX = dx;
+        this.lastMoveY = dy;
         isMoving = true;
       } else {
         this.player.body.setVelocity(0, 0);
@@ -173,6 +212,10 @@ export class GameScene extends Phaser.Scene {
 
       const keyboardVelocity = getArcadeVelocity(moveX, moveY, 240);
       this.player.body.setVelocity(keyboardVelocity.x, keyboardVelocity.y);
+      if (moveX !== 0 || moveY !== 0) {
+        this.lastMoveX = moveX;
+        this.lastMoveY = moveY;
+      }
       if (!isMoving) {
         this.player.body.setVelocity(0, 0);
       }
@@ -188,16 +231,28 @@ export class GameScene extends Phaser.Scene {
       this.triggerSlash();
     }
 
+    if (this.hasLaserBlaster && Phaser.Input.Keyboard.JustDown(this.jKey)) {
+      this.fireLaserShot();
+    }
+
     const targetScale = isMoving ? 1.0 : 0.1;
     this.timeScale += (targetScale - this.timeScale) * 0.15 * deltaFactor;
 
-    if (this.timeScale < 0.3) {
+    const powerReady = this.invincibilityTimer > 0 || this.laserTimer > 0;
+    if (this.isSlash) {
+      this.statusText.setText('SLASHING...').setColor('#ff0055');
+    } else if (this.invincibilityTimer > 0) {
+      this.statusText.setText('INVINCIBILITY READY').setColor('#00ffcc');
+    } else if (this.timeScale < 0.3) {
       this.statusText.setText('BULLET TIME (10% SPEED)').setColor('#00ffcc');
     } else {
       this.statusText.setText('REAL-TIME SLICE').setColor('#ff0055');
     }
 
-    if (this.isSlash) {
+    if (this.invincibilityTimer > 0) {
+      this.invincibilityTimer = Math.max(0, this.invincibilityTimer - deltaSeconds);
+      this.player.setFillStyle(0xffd84d);
+    } else if (this.isSlash) {
       this.slashTimer -= deltaFactor;
       if (this.slashTimer <= 0) {
         this.isSlash = false;
@@ -207,6 +262,20 @@ export class GameScene extends Phaser.Scene {
       this.energy = Math.min(100, this.energy + 0.25 * this.timeScale * deltaSeconds * 60);
     }
 
+    if (this.laserTimer > 0) {
+      this.laserTimer = Math.max(0, this.laserTimer - deltaSeconds);
+    }
+
+    if (this.invincibilityTimer > 0) {
+      this.powerText.setText(`INVINCIBLE: ${this.invincibilityTimer.toFixed(1)}s`);
+      this.powerText.setColor('#ffd84d');
+      this.powerText.setFontSize(12);
+      this.powerText.setAlpha(0.7);
+      this.powerText.setVisible(true);
+    } else {
+      this.powerText.setText('');
+      this.powerText.setVisible(false);
+    }
     this.energyText.setText(`ENERGY: ${Math.floor(this.energy)}%`);
 
     this.spawnTimer += this.timeScale * deltaSeconds * 60;
@@ -215,7 +284,59 @@ export class GameScene extends Phaser.Scene {
       this.spawnTimer = 0;
     }
 
+    if (this.starPowerups.getChildren().length < 1) {
+      this.powerupSpawnTimer -= deltaSeconds;
+      if (this.powerupSpawnTimer <= 0) {
+        if (Math.random() < 0.7) {
+          this.spawnPowerup();
+        }
+        this.powerupSpawnTimer = 18 + Math.random() * 22;
+      }
+    }
+    if (this.spawnTimer >= 90) {
+      this.spawnPattern();
+      this.spawnTimer = 0;
+    }
+
     const stepSpeed = this.baseSpeed * this.timeScale * deltaSeconds * 60;
+    if (this.isSlash) {
+      this.obstacles.getChildren().forEach((obs: Phaser.GameObjects.GameObject) => {
+        const obstacle = obs as CollisionBody;
+        if (!obstacle || !obstacle.active) return;
+        const closestX = Phaser.Math.Clamp(this.player.x, obstacle.x - obstacle.width / 2, obstacle.x + obstacle.width / 2);
+        const closestY = Phaser.Math.Clamp(this.player.y, obstacle.y - obstacle.height / 2, obstacle.y + obstacle.height / 2);
+        const outcome = resolveCollision(Math.hypot(this.player.x - closestX, this.player.y - closestY), SLASH_HITBOX_RADIUS, true);
+        if (outcome !== 'destroy') return;
+        this.createParticles(obstacle.x, obstacle.y, 0xff0055, 14);
+        this.shakeTime = 8;
+        obstacle.destroy();
+      });
+
+      this.bullets.getChildren().forEach((bullet: Phaser.GameObjects.GameObject) => {
+        const b = bullet as Phaser.GameObjects.Arc & { active: boolean; x: number; y: number; destroy: () => void; body?: Phaser.Physics.Arcade.Body };
+        if (!b || !b.active) return;
+        const outcome = resolveCollision(Math.hypot(this.player.x - b.x, this.player.y - b.y), SLASH_BULLET_RADIUS, true);
+        if (outcome !== 'destroy') return;
+        this.createParticles(b.x, b.y, 0x00ffcc, 10);
+        b.destroy();
+      });
+    }
+
+    if (this.invincibilityTimer > 0) {
+      this.destroyNearbyBricks();
+    }
+
+    this.starPowerups.getChildren().forEach((powerup: Phaser.GameObjects.GameObject) => {
+      const star = powerup as Phaser.GameObjects.Star & { active: boolean; x: number; y: number; body?: Phaser.Physics.Arcade.Body; destroy: () => void };
+      const starBody = star.body as Phaser.Physics.Arcade.Body | undefined;
+      if (starBody) {
+        starBody.setVelocityY(this.baseSpeed * 60 * this.timeScale);
+      } else {
+        star.y += stepSpeed;
+      }
+      if (star.y > 650) star.destroy();
+    });
+
     this.obstacles.getChildren().forEach((obs: Phaser.GameObjects.GameObject) => {
       const obstacle = obs as CollisionBody;
       const obstacleBody = obstacle.body as Phaser.Physics.Arcade.Body | undefined;
@@ -238,6 +359,22 @@ export class GameScene extends Phaser.Scene {
       if (b.y > 650) b.destroy();
     });
 
+    this.laserShots.getChildren().forEach((shotObj: Phaser.GameObjects.GameObject) => {
+      const shot = shotObj as Phaser.GameObjects.Arc & { active: boolean; x: number; y: number; destroy: () => void; body?: Phaser.Physics.Arcade.Body; getData: (key: string) => number; };
+      if (!shot || !shot.active) return;
+
+      const speedX = shot.getData('vx') ?? 0;
+      const speedY = shot.getData('vy') ?? 0;
+      shot.x += speedX * (delta / 1000);
+      shot.y += speedY * (delta / 1000);
+
+      const ttl = shot.getData('ttl') ?? 1800;
+      shot.setData('ttl', ttl - delta);
+      if ((shot.getData('ttl') ?? 0) <= 0 || shot.x < -80 || shot.x > this.scale.width + 80 || shot.y < -80 || shot.y > this.scale.height + 80) {
+        shot.destroy();
+      }
+    });
+
     this.particles.forEach((particle: ParticleEffect) => {
       particle.x += particle.vx * this.timeScale * deltaFactor;
       particle.y += particle.vy * this.timeScale * deltaFactor;
@@ -252,6 +389,10 @@ export class GameScene extends Phaser.Scene {
 
   private handleArcadeCollision(obstacle: Phaser.GameObjects.Rectangle): void {
     if (!obstacle || this.isGameOver) return;
+    if (this.invincibilityTimer > 0) {
+      this.destroyObstacleWithExplosion(obstacle);
+      return;
+    }
     const closestX = Phaser.Math.Clamp(this.player.x, obstacle.x - obstacle.width / 2, obstacle.x + obstacle.width / 2);
     const closestY = Phaser.Math.Clamp(this.player.y, obstacle.y - obstacle.height / 2, obstacle.y + obstacle.height / 2);
     const outcome = resolveCollision(Math.hypot(this.player.x - closestX, this.player.y - closestY), SLASH_HITBOX_RADIUS, this.isSlash);
@@ -274,6 +415,10 @@ export class GameScene extends Phaser.Scene {
 
   private handleArcadeBulletCollision(bullet: Phaser.GameObjects.Arc): void {
     if (!bullet || this.isGameOver) return;
+    if (this.invincibilityTimer > 0) {
+      this.destroyBulletWithExplosion(bullet);
+      return;
+    }
     const outcome = resolveCollision(Math.hypot(this.player.x - bullet.x, this.player.y - bullet.y), SLASH_BULLET_RADIUS, this.isSlash);
     if (outcome === 'none') return;
     if (outcome === 'destroy') {
@@ -325,6 +470,114 @@ export class GameScene extends Phaser.Scene {
       bulletBody.setAllowGravity(false);
       this.bullets.add(bullet);
     }
+  }
+
+  private spawnPowerup(): void {
+    const body = this.add.rectangle(0, 0, 20, 30, 0x00ffcc, 0.96).setStrokeStyle(2, 0x80ffee, 1);
+    const cap = this.add.rectangle(0, -18, 16, 6, 0xffd84d, 1);
+    const label = this.add.text(0, 1, 'E', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '12px',
+      color: '#101828',
+      fontStyle: 'bold',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    const powerup = this.add.container(Math.random() * 260 + 50, -24, [cap, body, label]);
+    this.physics.add.existing(powerup);
+    const powerupBody = powerup.body as Phaser.Physics.Arcade.Body;
+    powerupBody.setAllowGravity(false);
+    powerupBody.setImmovable(true);
+    (powerup as unknown as { type?: string }).type = 'invincibility';
+    this.starPowerups.add(powerup);
+  }
+
+  private triggerPowerup(powerup: Phaser.GameObjects.Container): void {
+    if (!powerup || this.isGameOver) return;
+    powerup.destroy();
+    this.invincibilityTimer = 5;
+    this.createParticles(this.player.x, this.player.y, 0xffd84d, 26);
+    this.shakeTime = 6;
+  }
+
+  private fireLaserShot(): void {
+    if (!this.hasLaserBlaster || this.isGameOver || this.laserTimer > 0) return;
+
+    const velocityX = this.player.body.velocity.x ?? 0;
+    const velocityY = this.player.body.velocity.y ?? 0;
+    const velocityMagnitude = Math.hypot(velocityX, velocityY);
+
+    let directionX = velocityX;
+    let directionY = velocityY;
+
+    if (velocityMagnitude < 20) {
+      const pointerDx = this.pointer.isDown ? this.pointer.x - this.player.x : 0;
+      const pointerDy = this.pointer.isDown ? this.pointer.y - this.player.y : 0;
+      const pointerMagnitude = Math.hypot(pointerDx, pointerDy);
+      if (pointerMagnitude >= 10) {
+        directionX = pointerDx;
+        directionY = pointerDy;
+      } else if (Math.hypot(this.lastMoveX, this.lastMoveY) >= 0.1) {
+        directionX = this.lastMoveX;
+        directionY = this.lastMoveY;
+      } else {
+        directionX = 0;
+        directionY = -1;
+      }
+    }
+
+    const magnitude = Math.hypot(directionX, directionY) || 1;
+    const normalizedX = directionX / magnitude;
+    const normalizedY = directionY / magnitude;
+    const shot = this.add.circle(this.player.x, this.player.y, 10, 0x7ae6ff, 1)
+      .setStrokeStyle(2, 0xbfeeff, 1)
+      .setDepth(30);
+    shot.setData('ttl', 1200);
+    const speed = 700;
+    shot.setData('vx', normalizedX * speed);
+    shot.setData('vy', normalizedY * speed);
+    this.physics.add.existing(shot);
+    const shotBody = shot.body as Phaser.Physics.Arcade.Body;
+    shotBody.setAllowGravity(false);
+    shotBody.setImmovable(true);
+    this.laserShots.add(shot);
+
+    const flash = this.add.circle(this.player.x, this.player.y, 16, 0xbfeeff, 0.9).setDepth(29);
+    this.add.tween({
+      targets: flash,
+      alpha: 0,
+      scale: 2.5,
+      duration: 90,
+      onComplete: () => flash.destroy()
+    });
+
+    this.laserTimer = 0.1;
+  }
+
+  private destroyNearbyBricks(): void {
+    const radius = 46;
+    const targets = this.obstacles.getChildren().filter((obs: Phaser.GameObjects.GameObject) => {
+      const obstacle = obs as CollisionBody;
+      if (!obstacle || !obstacle.active) return false;
+      return Phaser.Math.Distance.Between(this.player.x, this.player.y, obstacle.x, obstacle.y) < radius + obstacle.width * 0.75;
+    }) as CollisionBody[];
+
+    targets.forEach((obstacle) => this.destroyObstacleWithExplosion(obstacle));
+  }
+
+  private destroyObstacleWithExplosion(obstacle: CollisionBody): void {
+    if (!obstacle || !obstacle.active) return;
+    const currentCurrency = this.registry.get('currency') ?? 0;
+    this.registry.set('currency', currentCurrency + 5);
+    this.createParticles(obstacle.x, obstacle.y, 0xff6b00, 18);
+    this.createParticles(obstacle.x, obstacle.y, 0xff0055, 14);
+    obstacle.destroy();
+  }
+
+  private destroyBulletWithExplosion(bullet: Phaser.GameObjects.Arc): void {
+    if (!bullet || !bullet.active) return;
+    this.createParticles(bullet.x, bullet.y, 0xffd84d, 12);
+    bullet.destroy();
   }
 
   private createParticles(x: number, y: number, color: number, count = 8): void {
@@ -382,7 +635,11 @@ export class GameScene extends Phaser.Scene {
     });
     if (!this.isGameOver && this.isSlash) {
       this.effects.lineStyle(3, 0xff0055, 1);
-      this.effects.strokeCircle(this.player.x, this.player.y, 30);
+      this.effects.strokeCircle(this.player.x, this.player.y, SLASH_HITBOX_RADIUS);
+    }
+    if (!this.isGameOver && !this.isSlash && canTriggerSlash(this.energy, false)) {
+      this.effects.lineStyle(2, 0x00ffcc, 0.8);
+      this.effects.strokeCircle(this.player.x, this.player.y, SLASH_HITBOX_RADIUS + 4);
     }
     if (!this.isGameOver && this.impactPulse > 0) {
       const pulseRadius = 18 + (26 - this.impactPulse) * 4;

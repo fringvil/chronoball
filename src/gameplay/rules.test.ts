@@ -18,7 +18,7 @@ describe('slash rules', () => {
 
 describe('collision rules', () => {
   it('ignores objects outside the collision threshold', () => {
-    expect(resolveCollision(15, 15, false)).toBe('none');
+    expect(resolveCollision(16, 15, false)).toBe('none');
   });
 
   it('destroys a colliding object during a slash', () => {
@@ -29,8 +29,13 @@ describe('collision rules', () => {
     expect(resolveCollision(4, 15, false)).toBe('game-over');
   });
 
+  it('destroys a brick that is exactly touching the slash radius', () => {
+    expect(resolveCollision(SLASH_HITBOX_RADIUS, SLASH_HITBOX_RADIUS, true)).toBe('destroy');
+    expect(resolveCollision(SLASH_BULLET_RADIUS, SLASH_BULLET_RADIUS, true)).toBe('destroy');
+  });
+
   it('keeps the slash hitbox wide enough to match the animated slice', () => {
-    expect(resolveCollision(17, SLASH_HITBOX_RADIUS, true)).toBe('destroy');
-    expect(resolveCollision(19, SLASH_BULLET_RADIUS, true)).toBe('destroy');
+    expect(resolveCollision(29, SLASH_HITBOX_RADIUS, true)).toBe('destroy');
+    expect(resolveCollision(29, SLASH_BULLET_RADIUS, true)).toBe('destroy');
   });
 });
