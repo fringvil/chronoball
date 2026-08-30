@@ -38,7 +38,7 @@
     #game::before, #game::after {
       content: '';
       position: absolute;
-      z-index: 2;
+      z-index: 0;
       pointer-events: none;
     }
     #game::before {
@@ -56,7 +56,11 @@
       background: var(--pink);
       box-shadow: 0 0 12px var(--pink);
     }
-    canvas { display: block; }
+    canvas {
+      display: block;
+      position: relative;
+      z-index: 1;
+    }
     #gameOverModal {
       display: none;
       position: absolute;
@@ -72,7 +76,7 @@
       text-align: center;
     }
     #introModal {
-      display: flex;
+      display: none;
       position: absolute;
       inset: 0;
       z-index: 10;
@@ -119,26 +123,7 @@
   </style>
 </head>
 <body>
-  <div id="game">
-    <div id="introModal">
-      <p class="intro-kicker">NEON TIMELINE // READY</p>
-      <h1>CHRONOBALL</h1>
-      <p class="intro-subtitle">Survive the falling gates, stay in motion, and slice through anything you cannot avoid.</p>
-      <p class="menu-section-title">HOW TO PLAY</p>
-      <div class="control-list">
-        <div class="control-row"><span class="control-key wide">WASD / ARROWS</span><span class="control-label">Move the ball</span></div>
-        <div class="control-row"><span class="control-key">SPACE</span><span class="control-label">Activate neon slash</span></div>
-        <div class="control-row"><span class="control-key">TOUCH</span><span class="control-label">Drag anywhere to move</span></div>
-      </div>
-      <button id="startButton" class="game-button">BEGIN TIMELINE</button>
-    </div>
-    <div id="gameOverModal">
-      <h1>TIMELINE SHATTERED</h1>
-      <p>Depth Reached: <span id="finalScore">0</span>m</p>
-      <button id="reviveButton" class="game-button">REWIND TIME (REVIVE)</button>
-      <button id="restartButton" class="game-button">NEW TIMELINE</button>
-    </div>
-  </div>
-  <script type="module" src="/src/main.js"></script>
+  <div id="game"></div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
