@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canTriggerSlash, getEnergyAfterSlash, resolveCollision, SLASH_COST } from './rules';
+import { canTriggerSlash, getEnergyAfterSlash, resolveCollision, SLASH_BULLET_RADIUS, SLASH_COST, SLASH_HITBOX_RADIUS } from './rules';
 
 describe('slash rules', () => {
   it('allows a slash with exactly enough energy', () => {
@@ -27,5 +27,10 @@ describe('collision rules', () => {
 
   it('ends the game on an unslashed collision', () => {
     expect(resolveCollision(4, 15, false)).toBe('game-over');
+  });
+
+  it('keeps the slash hitbox wide enough to match the animated slice', () => {
+    expect(resolveCollision(17, SLASH_HITBOX_RADIUS, true)).toBe('destroy');
+    expect(resolveCollision(19, SLASH_BULLET_RADIUS, true)).toBe('destroy');
   });
 });

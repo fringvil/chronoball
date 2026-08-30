@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { addHighScore, saveHighScores } from '../gameplay/highScores';
-import { getArcadeVelocity } from '../gameplay/physics';
-import { canTriggerSlash, getEnergyAfterSlash, resolveCollision } from '../gameplay/rules';
+import { getArcadeVelocity, getDeltaFactor } from '../gameplay/physics';
+import { canTriggerSlash, getEnergyAfterSlash, resolveCollision, SLASH_BULLET_RADIUS, SLASH_HITBOX_RADIUS } from '../gameplay/rules';
 
 type TrailPoint = {
   x: number;
@@ -132,16 +132,19 @@ export class GameScene extends Phaser.Scene {
     this.spawnTimer = 0;
   }
 
-  update(_time: number, _delta: number): void {
+  update(_time: number, delta: number): void {
+    const deltaFactor = getDeltaFactor(delta);
+    const deltaSeconds = delta > 0 ? delta / 1000 : 1 / 60;
+
     if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
       this.scene.start('MainMenuScene');
       return;
     }
     if (this.isGameOver) {
       this.particles.forEach((particle: ParticleEffect) => {
-        particle.x += particle.vx * this.timeScale;
-        particle.y += particle.vy * this.timeScale;
-        particle.life -= this.timeScale;
+        particle.x += particle.vx * this.timeScale * deltaFactor;
+        particle.y += particle.vy * this.timeScale * deltaFactor;
+        particle.life -= this.timeScale * deltaFactor;
       });
       this.particles = this.particles.filter((particle: ParticleEffect) => particle.life > 0);
       this.drawEffects();
@@ -178,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     this.player.x = Phaser.Math.Clamp(this.player.x, 10, 350);
     this.player.y = Phaser.Math.Clamp(this.player.y, 10, 630);
     if (isMoving) this.trail.push({ x: this.player.x, y: this.player.y, alpha: 0.8 });
-    this.trail.forEach((trail: TrailPoint) => { trail.alpha -= 0.05; });
+    this.trail.forEach((trail: TrailPoint) => { trail.alpha -= 0.05 * deltaFactor; });
     this.trail = this.trail.filter((trail: TrailPoint) => trail.alpha > 0);
 
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
@@ -186,7 +189,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const targetScale = isMoving ? 1.0 : 0.1;
-    this.timeScale += (targetScale - this.timeScale) * 0.15;
+    this.timeScale += (targetScale - this.timeScale) * 0.15 * deltaFactor;
 
     if (this.timeScale < 0.3) {
       this.statusText.setText('BULLET TIME (10% SPEED)').setColor('#00ffcc');
@@ -195,24 +198,24 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.isSlash) {
-      this.slashTimer--;
+      this.slashTimer -= deltaFactor;
       if (this.slashTimer <= 0) {
         this.isSlash = false;
         this.player.setFillStyle(0x00ffcc);
       }
     } else if (this.energy < 100) {
-      this.energy = Math.min(100, this.energy + 0.25 * this.timeScale);
+      this.energy = Math.min(100, this.energy + 0.25 * this.timeScale * deltaSeconds * 60);
     }
 
     this.energyText.setText(`ENERGY: ${Math.floor(this.energy)}%`);
 
-    this.spawnTimer += this.timeScale;
+    this.spawnTimer += this.timeScale * deltaSeconds * 60;
     if (this.spawnTimer >= 90) {
       this.spawnPattern();
       this.spawnTimer = 0;
     }
 
-    const stepSpeed = this.baseSpeed * this.timeScale;
+    const stepSpeed = this.baseSpeed * this.timeScale * deltaSeconds * 60;
     this.obstacles.getChildren().forEach((obs: Phaser.GameObjects.GameObject) => {
       const obstacle = obs as CollisionBody;
       const obstacleBody = obstacle.body as Phaser.Physics.Arcade.Body | undefined;
@@ -230,19 +233,19 @@ export class GameScene extends Phaser.Scene {
       if (bulletBody) {
         bulletBody.setVelocityY((6 + this.baseSpeed) * 60 * this.timeScale);
       } else {
-        b.y += (6 + this.baseSpeed) * this.timeScale;
+        b.y += (6 + this.baseSpeed) * this.timeScale * deltaSeconds * 60;
       }
       if (b.y > 650) b.destroy();
     });
 
     this.particles.forEach((particle: ParticleEffect) => {
-      particle.x += particle.vx * this.timeScale;
-      particle.y += particle.vy * this.timeScale;
-      particle.life -= this.timeScale;
+      particle.x += particle.vx * this.timeScale * deltaFactor;
+      particle.y += particle.vy * this.timeScale * deltaFactor;
+      particle.life -= this.timeScale * deltaFactor;
     });
     this.particles = this.particles.filter((particle: ParticleEffect) => particle.life > 0);
 
-    this.score += this.timeScale * 0.5;
+    this.score += this.timeScale * 0.5 * deltaSeconds * 60;
     this.scoreText.setText(`DEPTH: ${Math.floor(this.score)}m`);
     this.drawEffects();
   }
@@ -251,7 +254,7 @@ export class GameScene extends Phaser.Scene {
     if (!obstacle || this.isGameOver) return;
     const closestX = Phaser.Math.Clamp(this.player.x, obstacle.x - obstacle.width / 2, obstacle.x + obstacle.width / 2);
     const closestY = Phaser.Math.Clamp(this.player.y, obstacle.y - obstacle.height / 2, obstacle.y + obstacle.height / 2);
-    const outcome = resolveCollision(Math.hypot(this.player.x - closestX, this.player.y - closestY), 10, this.isSlash);
+    const outcome = resolveCollision(Math.hypot(this.player.x - closestX, this.player.y - closestY), SLASH_HITBOX_RADIUS, this.isSlash);
     if (outcome === 'none') return;
     if (outcome === 'destroy') {
       this.createParticles(obstacle.x, obstacle.y, 0xff0055, 14);
@@ -271,7 +274,7 @@ export class GameScene extends Phaser.Scene {
 
   private handleArcadeBulletCollision(bullet: Phaser.GameObjects.Arc): void {
     if (!bullet || this.isGameOver) return;
-    const outcome = resolveCollision(Math.hypot(this.player.x - bullet.x, this.player.y - bullet.y), 15, this.isSlash);
+    const outcome = resolveCollision(Math.hypot(this.player.x - bullet.x, this.player.y - bullet.y), SLASH_BULLET_RADIUS, this.isSlash);
     if (outcome === 'none') return;
     if (outcome === 'destroy') {
       this.createParticles(bullet.x, bullet.y, 0x00ffcc, 10);
@@ -379,7 +382,7 @@ export class GameScene extends Phaser.Scene {
     });
     if (!this.isGameOver && this.isSlash) {
       this.effects.lineStyle(3, 0xff0055, 1);
-      this.effects.strokeCircle(this.player.x, this.player.y, 22);
+      this.effects.strokeCircle(this.player.x, this.player.y, 30);
     }
     if (!this.isGameOver && this.impactPulse > 0) {
       const pulseRadius = 18 + (26 - this.impactPulse) * 4;

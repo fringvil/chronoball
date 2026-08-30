@@ -1,4 +1,6 @@
 export const SLASH_COST = 35 as const;
+export const SLASH_HITBOX_RADIUS = 26 as const;
+export const SLASH_BULLET_RADIUS = 22 as const;
 
 export function canTriggerSlash(energy: number, isSlash: boolean): boolean {
   return energy >= SLASH_COST && !isSlash;
