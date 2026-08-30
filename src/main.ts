@@ -7,13 +7,21 @@ import { HighScoreScene } from './scenes/HighScoreScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 360,
-  height: 640,
+  width: 390,
+  height: 844,
   parent: 'game',
-  backgroundColor: '#05050d',
+  backgroundColor: '#070b16',
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    min: {
+      width: 320,
+      height: 568
+    },
+    max: {
+      width: 480,
+      height: 960
+    }
   },
   physics: {
     default: 'arcade',

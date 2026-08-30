@@ -140,40 +140,60 @@ export class GameScene extends Phaser.Scene {
       (_laser as Phaser.GameObjects.Arc).destroy();
     });
     this.effects = this.add.graphics();
+    const field = this.add.graphics();
+    field.fillGradientStyle(0x050b13, 0x050b13, 0x0b1723, 0x070d16, 1);
+    field.fillRect(0, 0, this.scale.width, this.scale.height);
+    field.fillStyle(0x7ef9ff, 0.07);
+    field.fillCircle(this.scale.width * 0.24, 120, 136);
+    field.fillStyle(0x93a9ff, 0.05);
+    field.fillCircle(this.scale.width * 0.76, 180, 160);
+    field.fillStyle(0x72f5d0, 0.04);
+    field.fillCircle(this.scale.width * 0.52, 640, 180);
+    field.setDepth(-1);
 
-    this.hudPanel = this.add.rectangle(180, 43, 332, 58, 0x0b0f1e, 0)
-      .setStrokeStyle(0, 0x00ffcc, 0);
-    this.hudPanel.setVisible(false);
-    this.scoreText = this.add.text(20, 22, 'DEPTH  0m', {
+    const grid = this.add.graphics();
+    grid.lineStyle(1, 0x94b8ff, 0.05);
+    for (let x = 0; x <= this.scale.width; x += 24) {
+      grid.lineBetween(x, 0, x, this.scale.height);
+    }
+    for (let y = 0; y <= this.scale.height; y += 24) {
+      grid.lineBetween(0, y, this.scale.width, y);
+    }
+    grid.setDepth(-1);
+
+    this.hudPanel = this.add.rectangle(180, 43, 332, 58, 0x0c1825, 0.82)
+      .setStrokeStyle(1.1, 0x7ef9ff, 0.18);
+    this.hudPanel.setVisible(true);
+    this.scoreText = this.add.text(24, 22, 'DEPTH  0m', {
       fontFamily: 'Trebuchet MS',
       fontSize: '14px',
-      color: '#00ffcc',
+      color: '#bbf5ff',
       fontStyle: 'bold',
-      shadow: { offsetX: 0, offsetY: 0, color: '#00ffcc', blur: 10, stroke: true, fill: true }
+      shadow: { offsetX: 0, offsetY: 0, color: '#bbf5ff', blur: 10, stroke: true, fill: true }
     });
     this.energyText = this.add.text(340, 22, 'ENERGY  100%', {
       fontFamily: 'Trebuchet MS',
       fontSize: '14px',
-      color: '#ff176f',
+      color: '#ffb2d1',
       fontStyle: 'bold',
       align: 'right',
-      shadow: { offsetX: 0, offsetY: 0, color: '#ff176f', blur: 10, stroke: true, fill: true }
+      shadow: { offsetX: 0, offsetY: 0, color: '#ffb2d1', blur: 10, stroke: true, fill: true }
     }).setOrigin(1, 0);
-    this.statusText = this.add.text(180, 57, 'BULLET TIME', {
+    this.statusText = this.add.text(180, 58, 'BULLET TIME', {
       fontFamily: 'Trebuchet MS',
       fontSize: '10px',
-      color: '#00ffcc',
+      color: '#d8f8ff',
       fontStyle: 'bold',
       letterSpacing: 2,
-      shadow: { offsetX: 0, offsetY: 0, color: '#00ffcc', blur: 8, stroke: true, fill: true }
+      shadow: { offsetX: 0, offsetY: 0, color: '#d8f8ff', blur: 8, stroke: true, fill: true }
     }).setOrigin(0.5);
-    this.powerText = this.add.text(180, 72, 'POWER: --', {
+    this.powerText = this.add.text(180, 74, 'POWER: --', {
       fontFamily: 'Trebuchet MS',
       fontSize: '12px',
-      color: '#ffd84d',
+      color: '#ffdca8',
       fontStyle: 'bold',
       letterSpacing: 2,
-      shadow: { offsetX: 0, offsetY: 0, color: '#ffd84d', blur: 8, stroke: true, fill: true }
+      shadow: { offsetX: 0, offsetY: 0, color: '#ffdca8', blur: 8, stroke: true, fill: true }
     }).setOrigin(0.5).setAlpha(0.7);
 
     this.cursors = keyboard.createCursorKeys();
@@ -470,6 +490,7 @@ export class GameScene extends Phaser.Scene {
       this.player.setFillStyle(0xff0055);
       this.shakeTime = 12;
       this.createParticles(this.player.x, this.player.y, 0xff0055, 20);
+      this.showRewardText(this.player.x, this.player.y - 18, 'SLASH!', 0xff0055, 18);
     }
   }
 
@@ -548,6 +569,7 @@ export class GameScene extends Phaser.Scene {
     this.invincibilityTimer = 5;
     this.createParticles(this.player.x, this.player.y, 0xffd84d, 26);
     this.shakeTime = 6;
+    this.showRewardText(this.player.x, this.player.y - 18, 'INVINCIBLE!', 0xffd84d, 16);
   }
 
   private fireLaserShot(): void {
@@ -623,12 +645,33 @@ export class GameScene extends Phaser.Scene {
     targets.forEach((obstacle) => this.destroyObstacleWithExplosion(obstacle));
   }
 
+  private showRewardText(x: number, y: number, label: string, color: number, size: number): void {
+    const strokeHex = `#${(color >>> 0).toString(16).padStart(6, '0')}`;
+    const text = this.add.text(x, y, label, {
+      fontFamily: 'Trebuchet MS, sans-serif',
+      fontSize: `${size}px`,
+      color: '#ffffff',
+      stroke: strokeHex,
+      strokeThickness: 2,
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(40);
+
+    this.tweens.add({
+      targets: text,
+      y: y - 30,
+      alpha: 0,
+      duration: 600,
+      onComplete: () => text.destroy()
+    });
+  }
+
   private destroyObstacleWithExplosion(obstacle: CollisionBody): void {
     if (!obstacle || !obstacle.active || obstacle.getData('steel') === true) return;
     const currentCurrency = this.registry.get('currency') ?? 0;
     this.registry.set('currency', currentCurrency + 5);
     this.createParticles(obstacle.x, obstacle.y, 0xff6b00, 18);
     this.createParticles(obstacle.x, obstacle.y, 0xff0055, 14);
+    this.showRewardText(obstacle.x, obstacle.y - 12, '+5', 0xffd84d, 15);
     obstacle.destroy();
   }
 

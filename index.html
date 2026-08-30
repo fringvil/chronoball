@@ -7,17 +7,20 @@
   <style>
     :root {
       color-scheme: dark;
-      --ink: #070812;
-      --panel: rgba(11, 15, 30, 0.82);
-      --cyan: #00ffcc;
-      --pink: #ff176f;
-      --line: rgba(0, 255, 204, 0.2);
+      --ink: #060d16;
+      --panel: rgba(14, 24, 35, 0.88);
+      --cyan: #7ef9ff;
+      --mint: #72f5d0;
+      --indigo: #93a9ff;
+      --pink: #ff7db5;
+      --line: rgba(126, 249, 255, 0.18);
+      --steel: rgba(175, 210, 255, 0.12);
     }
     * { box-sizing: border-box; user-select: none; touch-action: none; }
     body {
       margin: 0;
       padding: 0;
-      background: radial-gradient(circle at 50% 42%, #182040 0, #080b18 32%, #020207 78%);
+      background: radial-gradient(circle at top, #1a2b49 0%, #0b1220 28%, #050a12 58%, #02060a 100%);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -27,13 +30,13 @@
     }
     #game {
       position: relative;
-      width: min(100vw, 450px);
-      height: min(100vh, 800px);
+      width: min(100vw, 430px);
+      height: min(100vh, 860px);
       overflow: hidden;
-      background: var(--ink);
-      border: 1px solid rgba(0, 255, 204, 0.32);
-      border-radius: 18px;
-      box-shadow: 0 0 0 1px rgba(255, 23, 111, 0.12), 0 0 38px rgba(255, 23, 111, 0.28), 0 24px 80px rgba(0, 0, 0, 0.65);
+      background: linear-gradient(180deg, #0a121b 0%, #050b13 100%);
+      border: 1px solid rgba(126, 249, 255, 0.18);
+      border-radius: 26px;
+      box-shadow: 0 0 0 1px rgba(147, 169, 255, 0.08), 0 28px 70px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255,255,255,0.06);
     }
     #game::before, #game::after {
       content: '';
